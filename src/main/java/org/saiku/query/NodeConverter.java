@@ -35,94 +35,60 @@ import org.olap4j.metadata.Member;
 import org.saiku.query.metadata.Calculated;
 
 public class NodeConverter {
-	
+
 	protected static CallNode generateSetCall(ParseTreeNode... args) {
-		return
-				new CallNode(
-						null,
-						"{}",
-						Syntax.Braces,
-						args);
+		return new CallNode(null, "{}", Syntax.Braces, args);
 	}
 
 	protected static CallNode generateListSetCall(List<ParseTreeNode> cnodes) {
-		return
-				new CallNode(
-						null,
-						"{}",
-						Syntax.Braces,
-						cnodes);
+		return new CallNode(null, "{}", Syntax.Braces, cnodes);
 	}
 
 	protected static CallNode generateListTupleCall(List<ParseTreeNode> cnodes) {
-		return
-				new CallNode(
-						null,
-						"()",
-						Syntax.Parentheses,
-						cnodes);
+		return new CallNode(null, "()", Syntax.Parentheses, cnodes);
 	}
 
 	protected static CallNode generateCrossJoin(List<ParseTreeNode> selections) {
-		return generateCrossJoin(selections, false, true);
+		// return generateCrossJoin(selections, false, true);
+		return generateCrossJoin(selections, false, false);
 	}
 
-	protected static CallNode generateCrossJoin(List<ParseTreeNode> selections, boolean nonEmpty, boolean asterisk)
-	{
+
+	protected static CallNode generateCrossJoin(List<ParseTreeNode> selections, boolean nonEmpty, boolean asterisk) {
 		String crossJoinFun = nonEmpty ? "NonEmptyCrossJoin" : "CrossJoin";
-		if (selections == null || selections.size() == 0)
-			return null;
-		
-		ParseTreeNode sel1 = selections.get(0);
+		ParseTreeNode sel1 = selections.remove(0);
 		if (sel1 instanceof MemberNode) {
 			sel1 = generateSetCall(sel1);
 		}
-		if (selections.size() == 2) {
-			ParseTreeNode sel2 = selections.get(1);
+		if (selections.size() == 1) {
+			ParseTreeNode sel2 = selections.get(0);
 			if (sel2 instanceof MemberNode) {
 				sel2 = generateSetCall(sel2);
 			}
 			return new CallNode(
-					null, crossJoinFun, Syntax.Function, sel1, sel2);
+ 					null, crossJoinFun, Syntax.Function, sel1, sel2);
+
 		} else {
-			
-			if (asterisk) {
-				return new CallNode(
-						null, " * ", Syntax.Infix, selections);
-				
-			} else {
-				selections.remove(0);
-				return new CallNode(
-						null, crossJoinFun, Syntax.Function, sel1,
-						generateCrossJoin(selections, nonEmpty, asterisk));
-			}
+			return new CallNode(
+					null, crossJoinFun, Syntax.Function, sel1,
+					generateCrossJoin(selections, nonEmpty,false));
 		}
 	}
 
 	protected static CallNode generateUnion(List<List<ParseTreeNode>> unions) {
 		if (unions.size() > 2) {
 			List<ParseTreeNode> first = unions.remove(0);
-			return new CallNode(
-					null, "Union", Syntax.Function,
-					generateCrossJoin(first),
-					generateUnion(unions));
+			return new CallNode(null, "Union", Syntax.Function, generateCrossJoin(first), generateUnion(unions));
 		} else {
-			return new CallNode(
-					null, "Union", Syntax.Function,
-					generateCrossJoin(unions.get(0)),
+			return new CallNode(null, "Union", Syntax.Function, generateCrossJoin(unions.get(0)),
 					generateCrossJoin(unions.get(1)));
 		}
 	}
 
-	protected static CallNode generateHierarchizeUnion(
-			List<List<ParseTreeNode>> unions)
-	{
-		return new CallNode(
-				null, "Hierarchize", Syntax.Function,
-				generateUnion(unions));
+	protected static CallNode generateHierarchizeUnion(List<List<ParseTreeNode>> unions) {
+		return new CallNode(null, "Hierarchize", Syntax.Function, generateUnion(unions));
 	}
-	
-	
+
 	protected static ParseTreeNode toOlap4jMemberSet(List<Member> members) {
 		List<ParseTreeNode> membernodes = new ArrayList<ParseTreeNode>();
 		for (Member m : members) {
@@ -138,29 +104,25 @@ public class NodeConverter {
 		}
 		return generateListSetCall(membernodes);
 	}
-	
-	
+
 	protected static WithMemberNode toOlap4jCalculatedMember(Calculated cm) {
 		MdxParser parser = new DefaultMdxParserImpl();
 		ParseTreeNode formula = parser.parseExpression(cm.getFormula());
 		List<PropertyValueNode> propertyList = new ArrayList<PropertyValueNode>();
 		for (Entry<String, String> entry : cm.getFormatProperties().entrySet()) {
-			ParseTreeNode exp = LiteralNode.createString(null,  entry.getValue());
+			ParseTreeNode exp = LiteralNode.createString(null, entry.getValue());
 			String name = entry.getKey();
 			PropertyValueNode prop = new PropertyValueNode(null, name, exp);
 			propertyList.add(prop);
 		}
-		WithMemberNode wm = new WithMemberNode(
-				null, 
-				IdentifierNode.parseIdentifier(cm.getUniqueName()), 
-				formula, 
+		WithMemberNode wm = new WithMemberNode(null, IdentifierNode.parseIdentifier(cm.getUniqueName()), formula,
 				propertyList);
 		return wm;
 	}
-	
+
 	protected static IdentifierNode getIdentifier(String... identifiers) {
 		String identifier = "";
-		for (int i = 0; i < identifiers.length; i ++) {
+		for (int i = 0; i < identifiers.length; i++) {
 			if (i == 0) {
 				identifier = "~" + identifiers[0];
 			} else {
@@ -169,8 +131,5 @@ public class NodeConverter {
 		}
 		return IdentifierNode.ofNames(identifier);
 	}
-
-
-
 
 }
