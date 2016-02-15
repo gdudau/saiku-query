@@ -55,7 +55,7 @@ public class NodeConverter {
 
 
 	protected static CallNode generateCrossJoin(List<ParseTreeNode> selections, boolean nonEmpty, boolean asterisk) {
-		String crossJoinFun = nonEmpty ? "NonEmptyCrossJoin" : "CrossJoin";
+		String crossJoinFun = "CrossJoin";
 		ParseTreeNode sel1 = selections.remove(0);
 		if (sel1 instanceof MemberNode) {
 			sel1 = generateSetCall(sel1);
